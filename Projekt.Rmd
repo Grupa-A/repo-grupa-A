@@ -50,6 +50,7 @@ for (col in colnames(agencja)) {
   }
 }
 ```
+
 Cena: Kilka nieruchomości ma znacznie wyższą cenę niż pozostałe, co może świadczyć o ich wysokim standardzie, atrakcyjnej lokalizacji lub innych cechach podnoszących wartość.
 Powierzchnia: Niektóre nieruchomości mają bardzo dużą powierzchnię, co może oznaczać, że są to domy jednorodzinne lub posiadają dużą ilość pięter.
 Liczba sypialni: Niektóre nieruchomości mają 5 i 6 sypialni, co jest znacznie więcej niż średnia. Może to być związane z dużą powierzchnią lub specyficznym układem pomieszczeń.
@@ -73,6 +74,7 @@ for (col1 in colnames(agencja)) {
 }
 
 ```
+
 Postawiono warunki pozwalają zidentyfikować, które obserwacje w poszczególnych kolumnach mają wartości odstające w kontekście standardowego odchylenia. Wartości TRUE wskazują na to, że dana obserwacja spełnia warunek, natomiast FALSE oznacza, że nie spełnia warunku.
 
 ```{r}
@@ -144,17 +146,19 @@ all(agencja$`Furnishing status` %in% c("w pełni umeblowany", "częściowo umebl
 #sprawdzenie czy Prefarea zawiera tylko "Tak" lub "Nie"?
 all(agencja$Prefarea %in% c("yes", "no"))
 ```
+
 Podczas analizy danych o nieruchomościach stwierdzono, że wszystkie kluczowe warunki walidacyjne zostały spełnione. Cena nieruchomości oraz powierzchniajest przechowywana jako liczba, a liczba sypialni, łazienek, pięter oraz miejsc parkingowych zawiera tylko nieujemne liczby całkowite. Dodatkowo, kolumny Mainroad, Guestroom, Basement, Hot water heating, Airconditioning, Furnishing status i Prefarea zawierają tylko oczekiwane wartości 'Tak' lub 'Nie'. Dane są gotowe do dalszej analizy.
 
 ## Wizualizacja danych
 
-W tej części projektu zaprezentowano różne typy wykresów, takie jak histogramy, wykresy punktowe, wykresy liniowe, wykresy pudełkowe i inne.
+W tej części projektu zaprezentowano różne typy wykresów, takie jak histogramy, wykresy punktowe, wykresy liniowe, wykresy bąbelkowe i inne.
 
 ### Wykresy zmiennej ilościowej
 
-Histogram cen nieruchomości z podziałem na liczebność sypialni
+Wykresy histogramów przedstawiające ceny nieruchomości zostały stworzone z uwzględnieniem liczby sypialni, łazienek, pięter i miejsc parkingowych. Każdy histogram wizualizuje rozkład cen w zależności od danej kategorii, umożliwiając łatwe porównanie dystrybucji cen między różnymi parametrami nieruchomości.
 
 ```{r}
+
 ggplot(agencja, aes(x = price , fill = factor(bedrooms))) +
   geom_histogram(binwidth = 2000000, position = "dodge", color = "black", alpha = 0.7) +
   labs(title = "Histogram cen nieruchomości z podziałem na liczebność sypialni",
@@ -162,18 +166,61 @@ ggplot(agencja, aes(x = price , fill = factor(bedrooms))) +
        y = "Liczba nieruchomości") +
   scale_fill_discrete(name = "Liczba sypialni")
 
+ggplot(agencja, aes(x = price , fill = factor(bathrooms))) +
+  geom_histogram(binwidth = 2000000, position = "dodge", color = "black", alpha = 0.7) +
+  labs(title = "Histogram cen nieruchomości z podziałem na liczebność łazienek",
+       x = "Cena",
+       y = "Liczba nieruchomości") +
+  scale_fill_discrete(name = "Liczba łazienek")
+
+ggplot(agencja, aes(x = price , fill = factor(stories))) +
+  geom_histogram(binwidth = 2000000, position = "dodge", color = "black", alpha = 0.7) +
+  labs(title = "Histogram cen nieruchomości z podziałem na liczebność pięter",
+       x = "Cena",
+       y = "Liczba nieruchomości") +
+  scale_fill_discrete(name = "Liczba pięter")
+
+ggplot(agencja, aes(x = price , fill = factor(parking))) +
+  geom_histogram(binwidth = 2000000, position = "dodge", color = "black", alpha = 0.7) +
+  labs(title = "Histogram cen nieruchomości z podziałem na liczebność miejsc parkingowych",
+       x = "Cena",
+       y = "Liczba nieruchomości") +
+  scale_fill_discrete(name = "Liczba miejsc parkingowych")
+
 ```
-Histogram pokazuje rozkład cen nieruchomości w zależności od liczby sypialni. Najczęstszym typem nieruchomości są te z trzema sypialniami, które mają średnią cenę około 4000000. Nieruchomości z dwoma sypialniami są zwykle tańsze, a z czterema droższe. Nieruchomości z jedną, pięcioma lub sześcioma sypialniami są rzadkie na rynku.
+
+Pierwszy histogram przedstawia rozkład cen nieruchomości w zależności od liczby sypialni. Dominującym trendem są nieruchomości z trzema sypialniami, osiągające średnio cenę około 4 000 000 zł. Nieruchomości z dwiema sypialniami są zazwyczaj tańsze, natomiast te z czterema sypialniami charakteryzują się wyższą ceną. Nieruchomości z jedną, pięcioma lub sześcioma sypialniami są rzadko spotykane na rynku.
+Drugi histogram ilustruje rozkład cen nieruchomości w zależności od liczby łazienek. Najczęstsze są nieruchomości z jedną łazienką, osiągające przeciętnie cenę około 4 000 000 zł. Niższe ceny zazwyczaj korelują z jedną łazienką, podczas gdy wyższe ceny związane są z dwiema łazienkami. Nieruchomości z trzema lub czterema łazienkami są rzadkością.
+Trzeci histogram prezentuje rozkład liczby nieruchomości w zależności od liczby pięter. Nieruchomości jedno- i dwupiętrowe występują z podobną częstością, natomiast te z trzema lub czterema piętrami są rzadkie, a ich ceny zazwyczaj rosną.
+Czwarty histogram ukazuje rozkład cen nieruchomości w zależności od liczby miejsc parkingowych. Nieruchomości bez miejsc parkingowych dominują, podobnie jak te z jednym lub dwoma miejscami parkingowymi. Trzy miejsca parkingowe są rzadkością.
+Wykresy gęstości rozkładu cen nieruchomości zostały stworzone z uwzględnieniem liczby sypialni, łazienek, pięter i miejsc parkingowych. Prezentowane wykresy dostarczają głębokiej analizy zróżnicowania cenowego w kontekście różnych parametrów nieruchomości.
 
 ```{r}
 ggplot(agencja, aes(x = price, fill = factor(bedrooms))) +
   geom_density(alpha = 0.25) +
   labs(title = 'Gęstość rozkładu cen', x = 'Cena', y = 'Gęstość') +
   scale_fill_discrete(name = 'Liczba sypialni')
+ggplot(agencja, aes(x = price, fill = factor(bathrooms))) +
+  geom_density(alpha = 0.25) +
+  labs(title = 'Gęstość rozkładu cen', x = 'Cena', y = 'Gęstość') +
+  scale_fill_discrete(name = 'Liczba łazienek')
+ggplot(agencja, aes(x = price, fill = factor(stories))) +
+  geom_density(alpha = 0.25) +
+  labs(title = 'Gęstość rozkładu cen', x = 'Cena', y = 'Gęstość') +
+  scale_fill_discrete(name = 'Liczba pięter')
+ggplot(agencja, aes(x = price, fill = factor(parking))) +
+  geom_density(alpha = 0.25) +
+  labs(title = 'Gęstość rozkładu cen', x = 'Cena', y = 'Gęstość') +
+  scale_fill_discrete(name = 'Liczba miejsc parkingowych')
 ```
-Wykres przedstawia gęstość rozkładu cen nieruchomości w zależności od liczby sypialni. Wykres pokazuje, że im więcej sypialni ma nieruchomość, tym bardziej zróżnicowane są jej ceny. Nieruchomości z jedną sypialnią mają najwyższą gęstość cenową wokół 8.0e+06, co oznacza, że większość z nich ma podobną cenę. Nieruchomości z większą liczbą sypialni mają niższe i szersze szczyty gęstości, co oznacza, że ich ceny są bardziej rozproszone i zależą od innych czynników, takich jak lokalizacja, stan czy wyposażenie.
+Pierwszy wykres przedstawia gęstość rozkładu cen nieruchomości w zależności od liczby sypialni. Wykres pokazuje, że im więcej sypialni ma nieruchomość, tym bardziej zróżnicowane są jej ceny. Nieruchomości z jedną sypialnią mają najwyższą gęstość cenową wokół 8e-07, co oznacza, że większość z nich ma podobną cenę. Nieruchomości z większą liczbą sypialni mają niższe i szersze szczyty gęstości, co oznacza, że ich ceny są bardziej rozproszone.
+Drugi wykres prezentuje gęstość rozkładu cen w zależności od liczby łazienek. Podobnie jak w przypadku sypialni, większa liczba łazienek wiąże się z bardziej zróżnicowanymi cenami. Nieruchomości z jedną łazienką wykazują skupienie cenowe wokół 3e-07, podczas gdy dla tych z większą liczbą łazienek obserwujemy niższe i bardziej rozproszone wartości.
+Trzeci wykres ukazuje gęstość rozkładu cen w zależności od liczby pięter. Interesująco, niezależnie od liczby pięter, rozkład cenowy utrzymuje podobny wzorzec, skoncentrowany wokół 3e-07. To sugeruje, że ilość pięter nie ma istotnego wpływu na zróżnicowanie cen nieruchomości.
+Na czwartym wykresie widać, że gęstość rozkładu cen związanych z liczbą miejsc parkingowych. Nieruchomości bez miejsc parkingowych prezentują największe skupienie cen wokół 3e-07. Dla miejsc parkingowych od 1 do 3, gęstość rozkładu jest bardziej rozproszona, jednak zachowuje pewne podobieństwo.
 
 ### Wykresy dwóch zmiennych ilościowych
+
+Wykres punktowy między ceną, a powierzchnią nieruchomości stanowi kluczowy aspekt zrozumienia rynku mieszkaniowego. Dodatkowo, podział na liczbę pokoi wprowadza dodatkową warstwę informacji, pozwalając na lepsze zrozumienie, jak te trzy zmienne współgrają ze sobą.
 
 ```{r}
 ggplot(agencja, aes(x = area, y = price, color = factor(bedrooms))) +
@@ -183,7 +230,7 @@ ggplot(agencja, aes(x = area, y = price, color = factor(bedrooms))) +
        y = 'Cena') +
   scale_color_discrete(name = 'Liczba sypialni')
 ```
-Wykres przedstawia związek między ceną a powierzchnią nieruchomości, z podziałem na liczbę sypialni. Wykres pokazuje, że ogólnie rzecz biorąc, im większa jest powierzchnia, tym wyższa jest cena, ale istnieje duża zmienność, co wskazuje na wpływ innych czynników na cenę. Różne kolory oznaczają nieruchomości z różną liczbą sypialni, jednak nie widać wyraźnego wzorca, który by wskazywał, że liczba sypialni ma znaczący wpływ na cenę.
+Wykres pokazuje, że im większa jest powierzchnia, tym wyższa jest cena, ale istnieje duża zmienność, co wskazuje na wpływ innych czynników na cenę. Różne kolory oznaczają nieruchomości z różną liczbą sypialni, jednak nie widać wyraźnego wzorca, który by wskazywał, że liczba sypialni ma znaczący wpływ na cenę.
 
 ### Wykresy zmiennej jakościowej
 
@@ -198,6 +245,8 @@ Wykres przedstawia związek między ceną a powierzchnią nieruchomości, z podz
 ```
 
 ### Wykresy zmiennej ilościowej vs zmiennej jakościowej
+
+Wykres zmiennej ilościowej i zmiennej jakościowej przedstawia zależność między ceną domu, a liczbą sypialni.
 
 ```{r}
 library(dplyr)
@@ -215,7 +264,7 @@ ggplot(agencja, aes(x = factor(bedrooms), y = price)) +
                position = 'dodge', color = 'white', size = 1) +
   theme(legend.position = 'none')
 ```
-Wykres przedstawia zależność między ceną domu a liczbą sypialni. Z wykresu wynika, że im więcej sypialni ma dom, tym jest droższy. Jednak w kategoriach 2, 3 i 4 sypialni występują wartości odstające, które zwiększają zmienność cen. Największa różnica cenowa jest między domami z 4 i 5 sypialniami, co widać po długich wąsach wykresów pudełkowych. Domy z 6 sypialniami nie pasują do ogólnej tendencji, ponieważ są tańsze niż domy z mniejszą liczbą sypialni.
+Z wykresu wynika, że im więcej sypialni ma dom, tym jest droższy. Jednak w kategoriach 2, 3 i 4 sypialni występują wartości odstające, które zwiększają zmienność cen. Największa różnica cenowa jest między domami z 4 i 5 sypialniami, co widać po długich wąsach wykresów pudełkowych. Domy z 6 sypialniami nie pasują do ogólnej tendencji, ponieważ są tańsze niż domy z mniejszą liczbą sypialni.
 
 ### Wykresy bąbelkowe
 
