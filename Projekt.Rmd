@@ -7,19 +7,22 @@ output: html_document
 
 ```{r setup, include=FALSE}
 agencja <- read.csv("agencja_nieruchomosci.csv")
+library(outliers)
 library(DMwR)
 library(magrittr)
+library(ggplot2)
+
 ```
 
 ## Wprowadzenie
 
-Analiza danych agencji nieruchomości stanowi kluczowe narzędzie w zrozumieniu dynamicznych aspektów rynku nieruchomości. W ramach tego projektu, przeprowadzimy szczegółową analizę zestawu danych, który zawiera informacje na temat 13 zmiennych istotnych dla charakteryzacji nieruchomości. Te dane obejmują aspekty, takie jak cena nieruchomości, liczba sypialni, łazienek, a także różnorodne udogodnienia i cechy domów.
+Analiza danych agencji nieruchomości stanowi kluczowe narzędzie w zrozumieniu dynamicznych aspektów rynku nieruchomości. W ramach tego projektu, przeprowadzono szczegółową analizę zestawu danych, który zawiera informacje na temat 13 zmiennych istotnych dla charakteryzacji nieruchomości. Te dane obejmują aspekty, takie jak cena nieruchomości, powierzchnia, liczba sypialni, łazienek, a także różnorodne udogodnienia i cechy domów.
 
-Celem naszej analizy jest zidentyfikowanie istotnych zależności, które mogą mieć wpływ na ceny nieruchomości. Będziemy badać zarówno zmienne ilościowe, jak i jakościowe, aby uzyskać pełniejszy obraz rynku nieruchomości. Analiza ta może dostarczyć istotnych wskazówek dla agencji nieruchomości, inwestorów czy potencjalnych nabywców, pomagając im podejmować bardziej świadome decyzje.
+Celem  analizy jest zidentyfikowanie istotnych zależności, które mogą mieć wpływ na ceny nieruchomości. Zbadano zarówno zmienne ilościowe, jak i jakościowe, aby uzyskać pełniejszy obraz rynku nieruchomości. Analiza ta może dostarczyć istotnych wskazówek dla agencji nieruchomości, inwestorów czy potencjalnych nabywców, pomagając im podejmować bardziej świadome decyzje.
 
 ## Czyszczenie danych
 
-W pierwszym etapie naszej analizy skoncentrujemy się na procesie czyszczenia danych, co obejmuje identyfikację, zarządzanie i eliminację potencjalnych nieprawidłowości w danych.
+W pierwszym etapie analizy skoncentrowano się na procesie czyszczenia danych, co obejmuje identyfikację, zarządzanie i eliminację potencjalnych nieprawidłowości w danych.
 
 ### Brakujące obserwacje
 
@@ -30,7 +33,10 @@ W pierwszym etapie naszej analizy skoncentrujemy się na procesie czyszczenia da
 
 Kolejnym krokiem jest zidentyfikowanie obserwacji odstających, ponieważ mogą one wpływać na wynik analizy i prowadzić do błędnych wniosków.
 
+Na wstępie przedstawiono wykresy ramkowe, ilustrujące rozkład zmiennych ilościowych.
+
 ```{r}
+par(mfrow = c(2, 3))
 for (col in colnames(agencja)) {
   if (is.numeric(agencja[[col]])) {
     boxplot(agencja[[col]], 
@@ -44,10 +50,18 @@ for (col in colnames(agencja)) {
   }
 }
 ```
+Cena: Kilka nieruchomości ma znacznie wyższą cenę niż pozostałe, co może świadczyć o ich wysokim standardzie, atrakcyjnej lokalizacji lub innych cechach podnoszących wartość.
+Powierzchnia: Niektóre nieruchomości mają bardzo dużą powierzchnię, co może oznaczać, że są to domy jednorodzinne lub posiadają dużą ilość pięter.
+Liczba sypialni: Niektóre nieruchomości mają 5 i 6 sypialni, co jest znacznie więcej niż średnia. Może to być związane z dużą powierzchnią lub specyficznym układem pomieszczeń.
+Liczba łazienek: Jedna nieruchomość ma 4 łazienki. Może to być związane z dużą liczbą sypialni lub wysokim standardem. Liczba pięter: Kilka nieruchomości ma 4 piętra. Może to oznaczać, że są to domy z poddaszem lub piwnicą.
+Liczba miejsc parkingowych: Niektóre nieurchomości mają 3 miejsca parkingowe.Może to oznaczać, że są to domy z garażem
+lub podjazdem.
 
-Cena: Kilka nieruchomości ma znacznie wyższą cenę niż pozostałe, co może świadczyć o ich wysokim standardzie, atrakcyjnej lokalizacji lub innych cechach podnoszących wartość. Powierzchnia: Niektóre nieruchomości mają bardzo dużą powierzchnię, co może oznaczać, że są to domy jednorodzinne lub posiadają dużą ilość pięter. Liczba sypialni: Niektóre nieruchomości mają 5 i 6 sypialni, co jest znacznie więcej niż średnia. Może to być związane z dużą powierzchnią lub specyficznym układem pomieszczeń. Liczba łazienek: Jedna nieruchomość ma 4 łazienki. Może to być związane z dużą liczbą sypialni lub wysokim standardem. Liczba pięter: Kilka nieruchomości ma 4 piętra. Może to oznaczać, że są to domy z poddaszem lub piwnicą. Liczba miejsc parkingowych: Niektóre nieurchomości mają 3 miejsca parkingowe.Może to oznaczać, że są to domy z garażem lub podjazdem.
+Następnie zaprezentowano wykresy rozrzutu, ukazujące zależności między dwiema zmiennymi ilościowymi.
 
 ```{r}
+par(mar = c(2, 2, 2, 2))
+par(mfrow = c(6, 5))
 for (col1 in colnames(agencja)) {
   for (col2 in colnames(agencja)) {
     if (is.numeric(agencja[[col1]]) && is.numeric(agencja[[col2]]) && col1 != col2) {
@@ -57,7 +71,9 @@ for (col1 in colnames(agencja)) {
     }
   }
 }
+
 ```
+Postawiono warunki pozwalają zidentyfikować, które obserwacje w poszczególnych kolumnach mają wartości odstające w kontekście standardowego odchylenia. Wartości TRUE wskazują na to, że dana obserwacja spełnia warunek, natomiast FALSE oznacza, że nie spełnia warunku.
 
 ```{r}
 conditions <- data.frame(
@@ -71,10 +87,16 @@ conditions <- data.frame(
 summary(conditions)
 ```
 
-Cena: 6 z 545 nieruchomości ma cenę, która jest odstająca. Powierzchnia: 7 z 545 nieruchomości ma powierzchnię, która jest odstająca. Liczba sypialni: 2 z 545 nieruchomości ma liczbę sypialni, która jest odstająca. Liczba łazienek: 11 z 545 nieruchomości ma liczbę łazienek, która jest odstająca. Liczba pięter: Żadna z 545 nieruchomości nie ma liczby pięter, która jest odstająca. Może to oznaczać, że wszystkie nieruchomości mają podobną liczbę pięter lub że zmienna stories nie ma rozkładu normalnego. Liczba miejsc parkingowych: Żadna z 545 nieruchomości nie ma liczby miejsc parkingowych, która jest odstająca. Może to oznaczać, że wszystkie nieruchomości mają podobną liczbę miejsc parkingowych lub że zmienna parking nie ma rozkładu normalnego.
+Cena: 6 z 545 nieruchomości ma cenę, która jest odstająca.
+Powierzchnia: 7 z 545 nieruchomości ma powierzchnię, która jest odstająca.
+Liczba sypialni: 2 z 545 nieruchomości ma liczbę sypialni, która jest odstająca.
+Liczba łazienek: 11 z 545 nieruchomości ma liczbę łazienek, która jest odstająca.
+Liczba pięter: Żadna z 545 nieruchomości nie ma liczby pięter, która jest odstająca. Może to oznaczać, że wszystkie nieruchomości mają podobną liczbę pięter lub że zmienna stories nie ma rozkładu normalnego. 
+Liczba miejsc parkingowych: Żadna z 545 nieruchomości nie ma liczby miejsc parkingowych, która jest odstająca. Może to oznaczać, że wszystkie nieruchomości mają podobną liczbę miejsc parkingowych lub że zmienna parking nie ma rozkładu normalnego.
+
+Zastosowano test Grubbsa dla jednego odstającego elementu dla kilku zmiennych kluczowych.
 
 ```{r}
-library(outliers)
 grubbs.test(agencja$price)
 grubbs.test(agencja$area)
 grubbs.test(agencja$bedrooms)
@@ -83,9 +105,11 @@ grubbs.test(agencja$stories)
 grubbs.test(agencja$parking)
 ```
 
-Cena: Najwyższa wartość ceny, czyli 13300000, jest odstająca. Powierzchnia: Najwyższa wartość powierzchni, czyli 16200, jest odstająca. Liczba sypialni: Najwyższa wartość liczby sypialni, czyli 6, jest odstająca. Liczba łazienek: Najwyższa wartość liczby łazienek, czyli 4, jest odstająca. Liczba pięter: Najwyższa wartość liczby pięter, czyli 4, nie jest odstająca. Liczba miejsc parkingowych: Najwyższa wartość liczby miejsc parkingowych, czyli 3, nie jest odstająca.
+Test Grubbsa wskazuje na obecność potencjalnych odstępstw w kilku zmiennych. Wartości najwyższe w przypadku price, area, bedrooms, oraz bathrooms różnią się istotnie od reszty danych, co sugeruje, że mogą stanowić potencjalne wartości odstające. Ostatnie dwie zmienne (stories, parking) nie wykazują istotnych różnic w najwyższych wartościach.
 
 ### Walidacja danych
+
+Przeprowadzono kilka kroków walidacyjnych, w tym sprawdzenie poprawności typów danych, braku duplikatów, oraz spełnienia określonych warunków dla poszczególnych zmiennych. W szczególności, zweryfikowano, czy wartości kolumn price, area, bedrooms, bathrooms, stories, oraz parking są przechowywane jako liczby, czy liczba sypialni, łazienek, pięter i miejsc parkingowych są liczbami całkowitymi i nieujemnymi, a także czy kolumny mainroad, guestroom, basement, hotwaterheating, airconditioning, Furnishing status, oraz Prefarea zawierają tylko odpowiednie wartości.
 
 ```{r}
 #sprawdzenie czy dane mają poprawny typ
@@ -120,19 +144,17 @@ all(agencja$`Furnishing status` %in% c("w pełni umeblowany", "częściowo umebl
 #sprawdzenie czy Prefarea zawiera tylko "Tak" lub "Nie"?
 all(agencja$Prefarea %in% c("yes", "no"))
 ```
-
 Podczas analizy danych o nieruchomościach stwierdzono, że wszystkie kluczowe warunki walidacyjne zostały spełnione. Cena nieruchomości oraz powierzchniajest przechowywana jako liczba, a liczba sypialni, łazienek, pięter oraz miejsc parkingowych zawiera tylko nieujemne liczby całkowite. Dodatkowo, kolumny Mainroad, Guestroom, Basement, Hot water heating, Airconditioning, Furnishing status i Prefarea zawierają tylko oczekiwane wartości 'Tak' lub 'Nie'. Dane są gotowe do dalszej analizy.
 
 ## Wizualizacja danych
 
-#############################################DODAĆ OPIS#######################################################
+W tej części projektu zaprezentowano różne typy wykresów, takie jak histogramy, wykresy punktowe, wykresy liniowe, wykresy pudełkowe i inne.
 
 ### Wykresy zmiennej ilościowej
 
 Histogram cen nieruchomości z podziałem na liczebność sypialni
 
 ```{r}
- library(ggplot2)
 ggplot(agencja, aes(x = price , fill = factor(bedrooms))) +
   geom_histogram(binwidth = 2000000, position = "dodge", color = "black", alpha = 0.7) +
   labs(title = "Histogram cen nieruchomości z podziałem na liczebność sypialni",
@@ -216,14 +238,32 @@ Wykres przedstawia zależność między ceną domu a liczbą sypialni. Z wykresu
 ### Data wrangling
 
 ```{r}
-
-
+agencja_nieruchomosci$bedrooms<-factor(agencja_nieruchomosci$bedrooms,ordered=TRUE)
+agencja_nieruchomosci$bathrooms<-factor(agencja_nieruchomosci$bathrooms,ordered=TRUE)
+agencja_nieruchomosci$stories<-factor(agencja_nieruchomosci$stories,ordered=TRUE)
+agencja_nieruchomosci$parking<-factor(agencja_nieruchomosci$parking,ordered=TRUE)
+agencja_nieruchomosci$furnishingstatus<-as.factor(agencja_nieruchomosci$furnishingstatus)
+agencja_nieruchomosci$mainroad<-as.factor(agencja_nieruchomosci$mainroad)
+agencja_nieruchomosci$guestroom<-as.factor(agencja_nieruchomosci$guestroom)
+agencja_nieruchomosci$basement<-as.factor(agencja_nieruchomosci$basement)
+agencja_nieruchomosci$hotwaterheating<-as.factor(agencja_nieruchomosci$hotwaterheating)                         
+agencja_nieruchomosci$airconditioning<-as.factor(agencja_nieruchomosci$airconditioning)
+agencja_nieruchomosci$prefarea<-as.factor(agencja_nieruchomosci$prefarea)
 ```
 
 ### Tabele liczności oraz TAI
 
 ```{r}
+etykiety<-c("1,5-3 mln","3-4,5 mln","4,5-6 mln","6-7,5 mln","7,5-9 mln","9-10,5 mln","10,5-12 mln","12-13,5 mln")
+limits<-cut(agencja_nieruchomosci$price,seq(1500000,13500000,by=1500000),labels=etykiety)
+tabela1<-freq(limits,type="html")
+```
 
+```{r tai, echo=FALSE}
+kbl(tabela1,caption = "Mieszkania  - ceny w mln") %>%
+    kable_material(c("striped", "hover"))
+tab1<-classIntervals(agencja_nieruchomosci$price,n=8,style="fixed",fixedBreaks=seq(1500000,13500000,by=1500000))
+jenks.tests(tab1)
 ```
 
 ### Podstawowe wykresy
@@ -270,4 +310,4 @@ corrplot(corr_matrix, method="color")
 
 ```
 
-
+## Podsumowanie i wnioski końcowe
