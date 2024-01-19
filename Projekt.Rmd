@@ -11,7 +11,10 @@ library(outliers)
 library(DMwR)
 library(magrittr)
 library(ggplot2)
-
+library(scales)
+library(ggstatsplot)
+library(ggpubr)
+attach(agencja)
 ```
 
 ## Wprowadzenie
@@ -360,11 +363,53 @@ Analiza korelacji przedstawiona na wykresie wskazuje na związki między ceną a
 
 ## Wnioskowanie statystyczne
 
-#############################################DODAĆ OPIS#######################################################
+W ramach analizy danych dotyczących cen nieruchomości przeprowadzono szereg testów statystycznych mających na celu zrozumienie zależności między cenami a różnymi zmiennymi, w tym powierzchnią mieszkania. Kluczowe wyniki obejmują testy normalności, testy Wilcoxona oraz ewentualną analizę korelacji.
 
+### Test  i wykresy normalności
+
+H0: normalność rozkładu
 
 ```{r}
+ggqqplot(price)
+ggqqplot(area)
+shapiro.test(price)
+shapiro.test(area)
+```
+Na podstawie testu normalności Shapiro-Wilka można stwierdzić, że zarówno dane dotyczące ceny, jak i powierzchni nie spełniają założenia normalności.
 
+### Jednorodność wariancji
+
+```{r}
+var(price)
+var(area)
+
+# Krok drugi - w teście F podajemy kolejno zmienną o wyższej, a następnie niższej z dwóch wariancji - jest to test ilorazu wariancji (wyższa przez niższą) - jednostronny, prawostronny.
+
+var.test(price, area, alternative="greater")  
+```
+Wyniki testu F sugerują, że wariancje między cenami a powierzchnią są istotnie różne, przy czym wariancja cen jest znacząco większa.
+
+### Test Wilcoxona
+
+H0: Nie istnieje istotna statystycznie różnica między cenami a powierzchnią mieszkań.
+H1: Istnieje istotna statystycznie różnica między cenami a powierzchnią mieszkań.
+
+```{r}
+wilcox.test(price, area, alternative = "two.sided", paired = FALSE, exact = FALSE, correct = TRUE, conf.int = FALSE, conf.level = 0.95)
+
+```
+Hipoteza zerowa zostaje odrzucona na rzecz hipotezy alternatywnej. Istnieją statystycznie istotne różnice w cenach mieszkań w zależności od powierzchni, przy użyciu testu Wilcoxona.
+
+### Wizualizacja
+
+```{r}
+ggscatterstats(
+  data = agencja,
+  x = area,
+  y = price,
+  type = "np",
+)
 ```
 
 ## Podsumowanie i wnioski końcowe
+
