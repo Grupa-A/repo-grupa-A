@@ -281,10 +281,11 @@ Z wykresu wynika, że im więcej sypialni ma dom, tym jest droższy. Jednak w ka
 
 ## Analiza opisowa
 
-#############################################DODAĆ OPIS#######################################################
-
+W trzecim etapie projektu przeprowadzono kompleksową analizę opisową danych agencji nieruchomości, wspartą odpowiednimi grafikami. 
 
 ### Data wrangling
+
+Dokonano odpowiedniego dostosowania formatów zmiennych, uwzględniając ich skalę pomiarową oraz przyszłe zastosowanie. Ten proces ma na celu zapewnienie spójności i odpowiedniego reprezentowania danych, co umożliwi bardziej precyzyjną analizę oraz ułatwi przyszłe używanie tych informacji. 
 
 ```{r}
 agencja_nieruchomosci$bedrooms<-factor(agencja_nieruchomosci$bedrooms,ordered=TRUE)
@@ -302,6 +303,8 @@ agencja_nieruchomosci$prefarea<-as.factor(agencja_nieruchomosci$prefarea)
 
 ### Tabele liczności oraz TAI
 
+Zestawienie prezentuje rozkład cen mieszkań w różnych przedziałach cenowych.
+
 ```{r}
 etykiety<-c("1,5-3 mln","3-4,5 mln","4,5-6 mln","6-7,5 mln","7,5-9 mln","9-10,5 mln","10,5-12 mln","12-13,5 mln")
 limits<-cut(agencja_nieruchomosci$price,seq(1500000,13500000,by=1500000),labels=etykiety)
@@ -314,6 +317,8 @@ kbl(tabela1,caption = "Mieszkania  - ceny w mln") %>%
 tab1<-classIntervals(agencja_nieruchomosci$price,n=8,style="fixed",fixedBreaks=seq(1500000,13500000,by=1500000))
 jenks.tests(tab1)
 ```
+
+W analizie cen mieszkań można zauważyć, że największą grupę stanowią nieruchomości w przedziale od 3 do 4,5 mln, reprezentujące 40,4% zbioru. Ogólnie, mieszkania o cenach od 1,5 do 6 mln stanowią 78,5% zbioru, co wskazuje na dominację nieruchomości w średnich przedziałach cenowych na rynku. Mimo obecności mieszkań o wyższych cenach, ich udziały są stosunkowo niższe. Analiza kumulacyjna podkreśla, że większość rynku koncentruje się w przedziałach cenowych od 3 do 6 mln. Warto także zauważyć, że nieruchomości w przedziale 10,5-12 mln stanowią zaledwie 0,7% całego zbioru, co świadczy o ich znacznej mniejszej liczbie na rynku.
 
 ### Podstawowe wykresy
 
@@ -341,6 +346,8 @@ jenks.tests(tab1)
 
 ### Macierze korelacji
 
+Analiza korelacji stanowi kluczowy element w badaniu związków między różnymi parametrami nieruchomości. W celu lepszego zrozumienia tych wzajemnych relacji, przeprowadzono obliczenia współczynników korelacji oraz utworzono macierz korelacji dla kluczowych parametrów, takich jak cena nieruchomości, powierzchnia, liczba łazienek, sypialni oraz pięter.
+
 ```{r}
 library(corrplot)
 
@@ -349,6 +356,7 @@ corr_matrix<-cor(agencja[,1:5,11])
 corrplot(corr_matrix, method="color")
 
 ```
+Analiza korelacji przedstawiona na wykresie wskazuje na związki między ceną a powierzchnią, liczbą sypialni, łazienek i pięter. Największa korelacja występuje między ceną a powierzchnią (0.54) oraz ceną a liczbą łazienek (0.52), co oznacza, że te zmienne są średnio skorelowane dodatnio. Oznacza to, że wzrost wartości jednej zmiennej jest związany ze wzrostem wartości drugiej zmiennej.
 
 ## Wnioskowanie statystyczne
 
