@@ -1,0 +1,696 @@
+---
+title: "mnb"
+output: html_document
+date: "2024-01-14"
+---
+
+
+
+title: "Analiza Danych Agencji Nieruchomości"
+author: "Kinga Derewecka, Piotr Bochiński"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+agencja <- read.csv("agencja_nieruchomosci.csv")
+install.packages("DMwR")
+install.packages("magittr")
+install.packages("ggplot2")
+library(DMwR)
+library(magrittr)
+library(dplyr) # ładuję biblioteki
+library(ggplot2)
+library(rmdformats)
+library(validate)
+library(validatetools)
+library(dcmodify)
+library(errorlocate)
+library(deductive)
+library(VIM)
+library(simputation)
+library(lumberjack)
+library(ISLR) 
+install.packages("dlookr")
+library(dlookr)
+install.packages("xts")
+library(xts)
+library(quantmod)
+library(ROCR)
+library(DMwR)
+library(Information)
+library(scorecard)
+```
+
+
+### Brakujące obserwacje
+
+```{r}
+na_indicates <- which(is.na(agencja_nieruchomosci))
+print(na_indicates)
+```
+W zbiorze danych nie występują brakujące obserwacje, więc nie należy zamieniać np. według średniej dla dalszej analizy.
+
+### Obserwacje odstające
+
+Kolejnym krokiem jest zidentyfikowanie obserwacji odstających, ponieważ mogą one wpływać na wynik analizy i prowadzić do błędnych wniosków.
+
+
+
+
+
+## Wizualizacja danych
+
+
+```{r}
+ggplot(agencja_nieruchomosci, aes(x = bedrooms, y = price)) +
+  geom_bar(stat = "identity") +
+  labs(title = "ilość sypialni,a cena",
+       x = "ilość sypialni",
+       y = "cena")
+
+
+```
+
+```{r}
+ggplot(agencja_nieruchomosci, aes(x = bathrooms, y = price)) +
+  geom_bar(stat = "identity") +
+  labs(title = "ilość łazienek, a cena",
+       x = "ilość łazienek",
+       y = "cena")
+
+```
+
+```{r}
+counts <- table(agencja_nieruchomosci$bedrooms)
+print(counts)
+```
+```{r}
+ggplot(agencja_nieruchomosci, aes(y = area)) +
+  geom_boxplot() +
+  labs(title = "Powierzchnia",
+       y = "powierzchnia mieszkan")
+
+
+```
+
+```{r}
+ggplot(agencja_nieruchomosci, aes(y = price, x= area)) +
+  geom_polygon() +
+  labs(title = "Powierzchnia, a cena",
+       x = "powierzchnia mieszkania w m^2",
+       y = "cena")
+```
+
+```{r}
+summary(agencja)
+```
+
+price: Ceny nieruchomości wahają się od 1 750 000 do 13 300 000 jednostek waluty (jednostka nie została podana).
+
+area: Powierzchnia nieruchomości miesci się w zakresie od 1650 do 16 200 jednostek powierzchni (jednostka nie została podana).
+
+bedrooms: Liczba sypialni w nieruchomościach oscyluje od 1 do 6.
+
+bathrooms: Liczba łazienek w nieruchomościach mieści się w zakresie od 1 do 4.
+
+stories: Liczba pięter w budynkach mieszkalnych waha się od 1 do 4.
+
+mainroad: Zmienna kategoryczna reprezentująca dostępność do głównej drogi. Modelem danych jest tekst.
+
+guestroom: Zmienna kategoryczna reprezentująca dostępność pokoju dla gości. Modelem danych jest tekst.
+
+basement: Zmienna kategoryczna reprezentująca dostępność piwnicy. Modelem danych jest tekst.
+
+hotwaterheating: Zmienna kategoryczna reprezentująca dostępność podgrzewania wody. Modelem danych jest tekst.
+
+airconditioning: Zmienna kategoryczna reprezentująca dostępność klimatyzacji. Modelem danych jest tekst.
+
+parking: Liczba miejsc parkingowych dostępnych przy nieruchomościach waha się od 0 do 3.
+
+prefarea: Zmienna kategoryczna reprezentująca preferowany obszar. Modelem danych jest tekst.
+
+furnishingstatus: Zmienna kategoryczna reprezentująca status umeblowania nieruchomości. Modelem danych jest tekst.
+
+Ogólnie rzecz biorąc, dane obejmują różnorodne informacje na temat nieruchomości, takie jak cena, liczba sypialni, łazienek, pięter, dostępność do głównej drogi, dostępność pokoju dla gości, dostępność piwnicy, dostępność podgrzewania wody, dostępność klimatyzacji, liczba miejsc parkingowych, preferowany obszar i status umeblowania. Warto zauważyć, że wiele zmiennych kategorycznych zostało przedstawionych w formie tekstowej.
+```{r}
+table(guestroom)
+table(mainroad)
+table(aircondition)
+table(basement)
+table(hotwater)
+table(furnishing)
+print(cbind(table(guestroom),
+table(mainroad),
+table(aircondition),
+table(basement),
+table(hotwater)))
+448+97
+```
+1. 140 mieszkań jest w pełni umeblowanych (wyposażonych), 227 mieszkań jest w połowie wyposażonych, a 178 jest w stanie deweloperskim
+2. 448 mieszkań nie posiada pokój gościnny, a 97 tak.
+3. 468 z 545 nieruchomości posiada podłączenie do głównej drogi.
+4. Aż 373 nieruchomości nie posiadają klimatyzacji przy czym 172 posiadają.
+5. Jedynie 191 nieruchomości posiada piwnice, prawdopodobnie są to mieszkania w blokach.
+6. Zaledwie 25 nieruchomości posiada system ogrzewania ciepłej wody.
+
+### Wykresy zmiennej ilościowej
+
+
+Histogram cen nieruchomości z podziałem na liczebność sypialni
+
+```{r}
+ library(ggplot2)
+ggplot(agencja_nieruchomosci, aes(x = price , fill = factor(bedrooms))) +
+  geom_histogram(binwidth = 2000000, position = "dodge", color = "black", alpha = 0.7) +
+  labs(title = "Histogram cen nieruchomości z podziałem na liczebność sypialni",
+       x = "Cena",
+       y = "Liczba nieruchomości") +
+  scale_fill_discrete(name = "Liczba sypialni")
+
+```
+Histogram pokazuje rozkład cen nieruchomości w zależności od liczby sypialni. Najczęstszym typem nieruchomości są te z trzema sypialniami, które mają średnią cenę około 4000000. Nieruchomości z dwoma sypialniami są zwykle tańsze, a z czterema droższe. Nieruchomości z jedną, pięcioma lub sześcioma sypialniami są rzadkie na rynku.
+
+```{r}
+ggplot(agencja, aes(x = price, fill = factor(bedrooms))) +
+  geom_density(alpha = 0.25) +
+  labs(title = 'Gęstość rozkładu cen', x = 'Cena', y = 'Gęstość') +
+  scale_fill_discrete(name = 'Liczba sypialni')
+```
+Wykres przedstawia gęstość rozkładu cen nieruchomości w zależności od liczby sypialni. Wykres pokazuje, że im więcej sypialni ma nieruchomość, tym bardziej zróżnicowane są jej ceny. Nieruchomości z jedną sypialnią mają najwyższą gęstość cenową wokół 8.0e+06, co oznacza, że większość z nich ma podobną cenę. Nieruchomości z większą liczbą sypialni mają niższe i szersze szczyty gęstości, co oznacza, że ich ceny są bardziej rozproszone i zależą od innych czynników, takich jak lokalizacja, stan czy wyposażenie.
+
+### Wykresy dwóch zmiennych ilościowych
+
+```{r}
+ggplot(agencja, aes(x = area, y = price, color = factor(bedrooms))) +
+  geom_point() +
+  labs(title = 'Wykres punktowy: Cena vs. Powierzchnia',
+       x = 'Powierzchnia',
+       y = 'Cena') +
+  scale_color_discrete(name = 'Liczba sypialni')
+```
+Wykres przedstawia związek między ceną a powierzchnią nieruchomości, z podziałem na liczbę sypialni. Wykres pokazuje, że ogólnie rzecz biorąc, im większa jest powierzchnia, tym wyższa jest cena, ale istnieje duża zmienność, co wskazuje na wpływ innych czynników na cenę. Różne kolory oznaczają nieruchomości z różną liczbą sypialni, jednak nie widać wyraźnego wzorca, który by wskazywał, że liczba sypialni ma znaczący wpływ na cenę.
+
+
+
+```{r}
+
+if(!require('RColorBrewer')) install.packages('RColorBrewer')
+library(RColorBrewer)
+?summarize
+install.packages("dplyr")
+library(dplyr)
+medians = agencja %>%
+  group_by(bedrooms) %>%
+  summarize(m = median(price, na.rm = TRUE))
+library(ggplot2)
+ggplot(agencja, aes(x = bedrooms, y = price, group = bedrooms)) +
+  geom_boxplot(
+    aes(fill = bedrooms)
+    ,outlier.alpha = 0.25
+  ) +
+  geom_text(
+    data = medians
+    ,aes(x = bedrooms, y = m, label = m)
+    ,color = 'blue'
+    ,hjust = 7
+  ) +
+  stat_boxplot(geom ='errorbar', position = 'dodge') +
+  stat_summary(
+    aes(ymax = after_stat(y), ymin = after_stat(y))
+    ,fun = mean
+    ,geom = 'errorbar'
+    ,width = .75
+    ,linetype = 'solid'
+    ,position = 'dodge'
+    ,color = 'white'
+    ,size = 1
+  ) +
+  theme(legend.position = 'none')
+
+```
+najwyższą średnią cenę nieruchomości posiadają te, które mają 5 sypialni. Jednak najdroższe mieszkania posiadają 3 sypialeni co na wykresie widać jako odstające zmienne powyżej pudełka. Średnia cena przyjmuje wartość najniższą dla nieruchomości z 1 sypialnią oraz ceny te są o wiele bardziej do siebie zbliżone niż dla pozostałych wariantów, a w szczególności wariantu z 5 sypialniami gdzie ceny są najbardziej zróżnicowane.
+### Wykresy zmiennej jakościowej
+```{r}
+library(dplyr)
+medians = agencja %>%
+  group_by(mainroad) %>%
+  summarize(m = median(price, na.rm = TRUE))
+library(ggplot2)
+ggplot(agencja, aes(x = mainroad, y = price, group = mainroad)) +
+  geom_boxplot(
+    aes(fill = mainroad)
+    ,outlier.alpha = 0.25
+  ) +
+  geom_text(
+    data = medians
+    ,aes(x = mainroad, y = m, label = m)
+    ,color = 'blue'
+    ,hjust = 7
+  ) +
+  stat_boxplot(geom ='errorbar', position = 'dodge') +
+  stat_summary(
+    aes(ymax = after_stat(y), ymin = after_stat(y))
+    ,fun = mean
+    ,geom = 'errorbar'
+    ,width = .75
+    ,linetype = 'solid'
+    ,position = 'dodge'
+    ,color = 'white'
+    ,size = 1
+  ) +
+  theme(legend.position = 'none')
+```
+Brak podłączenia do głównej drogi powoduje niższą średnią cenę nieruchomości. Ceny w tym przypadku również są mniej zróżnicowane od cen nieruchomości z dostępem do drogi głównej
+
+```{r}
+medians = agencja %>%
+  group_by(guestroom) %>%
+  summarize(m = median(price, na.rm = TRUE))
+
+ggplot(agencja, aes(x = guestroom, y = price, group = guestroom)) +
+  geom_boxplot(
+    aes(fill = guestroom)
+    ,outlier.alpha = 0.25
+  ) +
+  geom_text(
+    data = medians
+    ,aes(x = guestroom, y = m, label = m)
+    ,color = 'blue'
+    ,hjust = 7
+  ) +
+  stat_boxplot(geom ='errorbar', position = 'dodge') +
+  stat_summary(
+    aes(ymax = after_stat(y), ymin = after_stat(y))
+    ,fun = mean
+    ,geom = 'errorbar'
+    ,width = .75
+    ,linetype = 'solid'
+    ,position = 'dodge'
+    ,color = 'white'
+    ,size = 1
+  ) +
+  theme(legend.position = 'none')
+```
+Nieruchomości z pokojem gościnnym posiadają wyższą średnią cenę od tych, które jej nie mają, jednak cene są rozproszone w podobnym stopniu w obu przypadkach. Jednak można zauważyć o wiele więcej cen odstających od pudełka w przypadku nieruchomości bez pokoju gościnnego, które są wyższe od odstających w wariancie z pokojem gościnnym. 
+
+```{r}
+medians = agencja %>%
+  group_by(airconditioning) %>%
+  summarize(m = median(price, na.rm = TRUE))
+
+ggplot(agencja, aes(x = airconditioning, y = price, group = airconditioning)) +
+  geom_boxplot(
+    aes(fill = airconditioning)
+    ,outlier.alpha = 0.25
+  ) +
+  geom_text(
+    data = medians
+    ,aes(x = airconditioning, y = m, label = m)
+    ,color = 'blue'
+    ,hjust = 7
+  ) +
+  stat_boxplot(geom ='errorbar', position = 'dodge') +
+  stat_summary(
+    aes(ymax = after_stat(y), ymin = after_stat(y))
+    ,fun = mean
+    ,geom = 'errorbar'
+    ,width = .75
+    ,linetype = 'solid'
+    ,position = 'dodge'
+    ,color = 'white'
+    ,size = 1
+  ) +
+  theme(legend.position = 'none')
+
+```
+Dostęp do klimatyzacji powoduje zdecydowany wzrost średniej ceny nieruchomości, dodatkowo odstającet również są wyższe od odstających dla drugiego wariantu co może sugerować, że jest to ważny czynnik cenowy dla nieruchomości.
+```{r}
+medians = agencja %>%
+  group_by(basement) %>%
+  summarize(m = median(price, na.rm = TRUE))
+
+ggplot(agencja, aes(x = basement, y = price, group = basement)) +
+  geom_boxplot(
+    aes(fill = basement)
+    ,outlier.alpha = 0.25
+  ) +
+  geom_text(
+    data = medians
+    ,aes(x = basement, y = m, label = m)
+    ,color = 'blue'
+    ,hjust = 7
+  ) +
+  stat_boxplot(geom ='errorbar', position = 'dodge') +
+  stat_summary(
+    aes(ymax = after_stat(y), ymin = after_stat(y))
+    ,fun = mean
+    ,geom = 'errorbar'
+    ,width = .75
+    ,linetype = 'solid'
+    ,position = 'dodge'
+    ,color = 'white'
+    ,size = 1
+  ) +
+  theme(legend.position = 'none')
+```
+Nieruchomości bez piwnic mają niewiele niższą średnią cenę od nieruchomości z piwnicami. 
+```{r}
+medians = agencja %>%
+  group_by(furnishingstatus) %>%
+  summarize(m = median(price, na.rm = TRUE))
+
+ggplot(agencja, aes(x = furnishingstatus, y = price, group = furnishingstatus)) +
+  geom_boxplot(
+    aes(fill = furnishingstatus)
+    ,outlier.alpha = 0.25
+  ) +
+  geom_text(
+    data = medians
+    ,aes(x = furnishingstatus, y = m, label = m)
+    ,color = 'blue'
+    ,hjust = 7
+  ) +
+  stat_boxplot(geom ='errorbar', position = 'dodge') +
+  stat_summary(
+    aes(ymax = after_stat(y), ymin = after_stat(y))
+    ,fun = mean
+    ,geom = 'errorbar'
+    ,width = .75
+    ,linetype = 'solid'
+    ,position = 'dodge'
+    ,color = 'white'
+    ,size = 1
+  ) +
+  theme(legend.position = 'none')
+```
+Najwyższą średnią cenę posiadają nieruchomości umeblowane w pełni a najniższą te w stanie deweloperski, również w przypadku cen odstających. 
+
+```{r}
+medians <- agencja %>%
+  group_by(furnishingstatus) %>%
+  summarize(m = median(price, na.rm = TRUE))
+
+means <- agencja %>%
+  group_by(furnishingstatus) %>%
+  summarize(m = mean(price, na.rm = TRUE))
+
+ggplot(agencja, aes(x = furnishingstatus, y = price, group = furnishingstatus)) +
+  geom_boxplot(
+    aes(fill = furnishingstatus),
+    outlier.alpha = 0.25
+  ) +
+  geom_text(
+    data = medians,
+    aes(x = furnishingstatus, y = m, label = m),
+    color = 'blue',
+    hjust = 7
+  ) +
+  geom_point(
+    data = means,
+    aes(x = furnishingstatus, y = m),
+    color = 'red',
+    size = 3,
+    position = position_dodge(width = 0.75)
+  ) +
+  stat_boxplot(geom ='errorbar', position = 'dodge') +
+  stat_summary(
+    aes(ymax = after_stat(y), ymin = after_stat(y)),
+    fun = mean,
+    geom = 'errorbar',
+    width = .75,
+    linetype = 'solid',
+    position = 'dodge',
+    color = 'white',
+    size = 1
+  ) +
+  theme(legend.position = 'none')
+
+```
+
+```{r}
+
+```
+
+### Wykresy dwóch zmiennych jakościowych
+
+```{r}
+library(ggplot2)
+library(dplyr)
+agencja %>%
+  filter(hotwaterheating != '') %>%
+  ggplot(aes(x = airconditioning, y = hotwaterheating)) +
+  geom_jitter(aes(color = aircondition)) +
+  theme(legend.position = 'none') +
+  scale_y_discrete(
+    limits = c(x = "no")
+  ) +
+  labs(x = 'airconditioning', y = 'hotwaterheating')
+```
+Większa liczba nieposiadająca wewnętrznego systemu ogrzewania wody również nie posiada klimatyzacji. 
+
+```{r}
+agencja %>%
+  filter(hotwaterheating != '') %>%
+  ggplot(aes(x = airconditioning, y = hotwaterheating)) +
+  geom_jitter(aes(color = aircondition)) +
+  theme(legend.position = 'none') +
+  scale_y_discrete(
+    limits = c(x = "yes")
+  ) +
+  labs(x = 'aircondition', y = 'hotwaterheating')
+```
+Zdeycydowanie mniej jest mieszkań posiadających wewnętrzny system ogrzewania wody oraz istnieje tylko jedna nieruchomość posiadająca podgrzewanie oraz klimatyzację.
+### Wykresy zmiennej ilościowej vs zmiennej jakościowej
+
+```{r}
+library(dplyr)
+
+medians <- agencja %>%
+  group_by(bedrooms) %>%
+  dplyr::summarize(median_price = median(price, na.rm = TRUE)) 
+
+ggplot(agencja, aes(x = factor(bedrooms), y = price)) +
+  geom_boxplot(aes(fill = factor(bedrooms)), outlier.alpha = 0.25, position = 'dodge') +
+  geom_text(data = medians, aes(x = factor(bedrooms), y = median_price, label = median_price),
+            color = 'red', hjust = -0.5, vjust = 0.5, size = 3) +
+  stat_summary(aes(ymax = after_stat(y), ymin = after_stat(y)), fun = mean,
+               geom = 'errorbar', width = 0.75, linetype = 'solid',
+               position = 'dodge', color = 'white', size = 1) +
+  theme(legend.position = 'none')
+```
+Wykres przedstawia zależność między ceną domu a liczbą sypialni. Z wykresu wynika, że im więcej sypialni ma dom, tym jest droższy. Jednak w kategoriach 2, 3 i 4 sypialni występują wartości odstające, które zwiększają zmienność cen. Największa różnica cenowa jest między domami z 4 i 5 sypialniami, co widać po długich wąsach wykresów pudełkowych. Domy z 6 sypialniami nie pasują do ogólnej tendencji, ponieważ są tańsze niż domy z mniejszą liczbą sypialni.
+
+### Wykresy bąbelkowe
+Wykres bąbelkowy przedstawia zależność między dwoma zmiennymi: powierzchnią nieruchomości (oś x) i ceną nieruchomości (oś y).
+Dodatkowo, rozmiar bąbelków reprezentuje liczbę sypialni w nieruchomości, a kolor bąbelków reprezentuje, czy nieruchomość jest wyposażona w system klimatyzacji (Tak/Nie).
+
+```{r}
+library(ggplot2)
+ggplot(agencja, aes(x = area, y = price, size = bedrooms, color = airconditioning)) +
+  geom_point(alpha = 0.7) +
+  labs(title = "Wykres bąbelkowy nieruchomości",
+       x = "Powierzchnia",
+       y = "Cena",
+       size = "Liczba sypialni",
+       color = "System klimatyzacji") +
+  theme_minimal()
+```
+
+### Kilka wykresów na jednym panelu
+
+```{r}
+agencja %>%
+  filter(area != '') %>%
+  ggplot(aes(x = bedrooms)) +
+  geom_histogram(
+    aes(fill = basement)
+    ,bins = 50
+    ,color = 'black'
+  ) +
+  # facet_grid(.~ Series.or.Movie) +
+  # facet_grid(Series.or.Movie ~ .) +
+  # facet_grid(Runtime ~ Series.or.Movie, scales = 'free') +
+  # facet_wrap(vars(Series.or.Movie), ncol = 2) +
+   facet_wrap(vars(basement), nrow = 2) +
+  # facet_wrap(vars(Series.or.Movie, Runtime), nrow = 2, scales = 'free') +
+  theme(legend.position = 'area')
+
+```
+
+
+
+### Podstawowe wykresy
+
+```{r}
+summary(agencja)
+```
+```{r}
+head(agencja)
+```
+()
+
+```{r}
+boxplot(agencja$price, main = "Boxplot", ylab = "Cena")
+
+```
+Średnia cena nieruchmości wynosi około 3 mln złotych, kilka z nich posiada cenę odstającą co może świadczyć o ich nadzwyczajnej jakości, lokalizacji czy wyposażeniu bądź wielkości
+
+
+```{r}
+boxplot(agencja$area, main = "Boxplot", ylab = "powierzchnia")
+```
+
+
+
+Średnia powierzchnia nieruchmości wynosi około 5 tys. m^2, kilka z nich posiada powierzchnie odstające od reszty wzwyż co może wyjaśniać również odstające wzwyż ceny niektórych nieruchomości.
+### Grupowanie grafik
+```{r}
+ggplot(agencja_nieruchomosci, aes(y = price, x= area)) +
+  geom_point() +
+  labs(title = "Powierzchnia, a cena odniesiona do powierzchni i piętra",
+       x = "powierzchnia mieszkania w m^2",
+       y = "cena") +
+  facet_grid(bedrooms ~ stories) +
+  labs(y = "Cena", x = "Powierzchnia mieszkania w m^2",
+       facet_grid = "Liczba sypialni oraz liczba pięter")
+
+```
+Najwięcej nieruchomości znajduje się na 3 piętrze oraz posiada 2 sypialnie. Jednak najliczniejszą grupą nieruchomości są te, posiadające 1 sypialnie. W największej grupie nieruchomości powierzchnia mieści się między 0 - 13000 m^2. Co ciekawe największą powierzchnie posiadają nieruchomości z jedną sypialnią 
+### Statystyki opisowe
+
+```{r}
+
+```
+
+### Podsumowanie opisu danych
+
+```{r}
+install.packages("psych")
+library(psych)
+describe(agencja)
+summary(agencja
+        )
+mean(bedrooms)
+mean(stories)
+mean(agencja$price)
+mean(area)
+median(bedrooms)
+sd(bedrooms)
+cat("średnia:", mean(bedrooms), "\n")
+cat("mediana", median(bedrooms), "\n")
+cat("Odchylenie standardowe", sd(bedrooms), "\n")
+#Średnia ilość sypialń w nieruchomościach wynosi 2.96. Środkową ilością sypialni
+#w nieruchomościach jest 3.Niska wartość odchylenia standardowego sugeruje, że większość nieruchomości posiada podobną ilość sypialni jak średnia.
+cat("średnia:", mean(stories), "\n")
+cat("mediana", median(stories), "\n")
+cat("Odchylenie standardowe", sd(stories), "\n")
+#Średnia ilość pięter w nieruchomościach wynosi 1.80. Środkową ilością pięter
+#w nieruchomościach jest 2.Wartość odchylenia standardowego sugeruje, że większość nieruchomości posiada podobną znajduje się pomiędzy parterem a 2 piętrem.
+cat("średnia:", mean(area), "\n")
+cat("mediana", median(area), "\n")
+cat("Odchylenie standardowe", sd(area), "\n")
+#Średnia powierzchnia nieruchomości wynosi 5150.5. Środkową ilością sypialni
+#w nieruchomościach jest 4600.Wysokie odchylenie standardowe sugerujeduże
+#zróżnicowanie pomiędzy metrarzem nieruchomości
+cat("średnia:", mean(price), "\n")
+cat("mediana", median(price), "\n")
+cat("Odchylenie standardowe", sd(price), "\n")
+#Średnia cena nieruchomości wynosi 4 766 729. Środkową ceną
+#nieruchomości jest 4 340 000. Ceny zazwyczaj wahają się w przedziale 
+# +/- 1 870 440 od średniej
+cat("średnia:", mean(bathrooms), "\n")
+cat("mediana", median(bathrooms), "\n")
+cat("Odchylenie standardowe", sd(bathrooms), "\n")
+#Średnia ilość łazienek w nieruchomościach wynosi 1.29 Środkową ilością sypialni
+#w nieruchomościach jest 1.Niska wartość odchylenia standardowego sugeruje, że większość nieruchomości posiada podobną ilość łazienek jak średnia.
+cat("średnia:", mean(parking), "\n")
+cat("mediana", median(parking), "\n")
+cat("Odchylenie standardowe", sd(parking), "\n")
+#Średnia ilość miejsc parkingowych przypadających na nieruchomość wynosi 0.69 Środkową ilością miejsc p. 
+#w nieruchomościach jest 0. Większość nieruchomości posiada 0.69 +/- 0.86 miejsc parkingowych
+```
+
+### Macierze korelacji
+
+```{r}
+library(corrplot)
+
+corrplot(cor(agencja[,1:5,11]), method = "number", type = "upper", diag =FALSE)
+corr_matrix<-cor(agencja[,1:5,11])
+corrplot(corr_matrix, method="color")
+
+```
+
+## Wnioskowanie statystyczne
+
+Czwartym etapem projektu, było wyciągnięcie wniosków statystycznych. M.in. sprawdzenie czy dane posiadają rozkład normalny, czy wariancje są jednorodne, wykonanie testu wilcoxona oraz inne. 
+
+```{r}
+
+
+```
+
+### Test i wykresy normalności
+
+H0: normalność rozkładu
+
+```{r}
+ggqqplot(price)
+ggqqplot(area)
+shapiro.test(price)
+shapiro.test(area)
+```
+
+Na podstawie testu normalności Shapiro-Wilka można stwierdzić, że zarówno dane dotyczące ceny, jak i powierzchni nie spełniają założenia normalności.
+
+### Jednorodność wariancji
+
+```{r}
+var(price)
+var(area)
+
+var.test(price, area, alternative="greater")  
+```
+
+Wyniki testu F sugerują, że wariancje między cenami a powierzchnią są istotnie różne, przy czym wariancja cen jest znacząco większa.
+
+### Test Wilcoxona
+
+H0: Nie istnieje istotna statystycznie różnica między cenami a powierzchnią mieszkań.
+H1: Istnieje istotna statystycznie różnica między cenami a powierzchnią mieszkań.
+
+```{r}
+wilcox.test(price, area, alternative = "two.sided", paired = FALSE, exact = FALSE, correct = TRUE, conf.int = FALSE, conf.level = 0.95)
+
+```
+
+Hipoteza zerowa zostaje odrzucona na rzecz hipotezy alternatywnej.
+Istnieją statystycznie istotne różnice w cenach mieszkań w zależności od powierzchni, przy użyciu testu Wilcoxona.
+
+### Wizualizacja
+
+```{r}
+ggscatterstats(
+  data = agencja,
+  x = area,
+  y = price,
+  type = "np",
+)
+```
+
+```{r}
+install.packages("ggstatsplot")
+library(ggstatsplot)
+install.packages("rstantool")
+ggbetweenstats(data=agencja, x=bedrooms, y=area)
+ggbetweenstats(data=agencja, x=stories, y=area)
+ggbetweenstats(data=agencja, x=area, y=area)
+ggbetweenstats(data=agencja, x=price, y=area)
+ggbetweenstats(data=agencja, x=bathrooms, y=area)
+ggbetweenstats(data=agencja, x=aircondition, y=area)
+```
+
+
+## Podsumowanie i wnioski końcowe
+Nieruchomości przedstawione w zestawieniu byly dość charakterystyczne. Po wielkościach powierzchni jak i cenach można sugerować, że były to nieruchomości z gruntami rolnymi czy po prostu zielonymi typu ogród. W wielu przypadkach więcej nie oznaczało lepiej pod względem cenowym. Jak się okazuje najdroższe nieruchomości nie posiadały maksymalnej ilośći sypialni czy też pięter bądź łazienek. Na cenę zdecydowanie miało wpływ umeblowanie. Przy nieruchomościach "wykończonych" cena byłą wyższa od tych w stanie deweloperskim co może sugerować, że strona popytowa wolała zakupić nieruchomości gotowe do pełni użytku. Dane były bardzo dokładne oraz "czyste" o czym świadczy chociażby brak brakujących obserwacji czy poprawny zapis danych. W większości przypadków nieruchomości posiadały coś kosztem czegoś. Np. większość nieruchomości posiadających klimatyzację nie posiadała wewnętrznego ocieplania wody i vice versa. Zdecydowana większość nieruchomości posiadała więcej niż 1 piętro ale i mniej niż 5 pięter. Do tego najliczniejszą grupą nieruchomości były te, które posiadały 2 do 3 sypialni. Średnia powierzchnia nieruchomości wynosiła 5150.5 m^2 co jest ogromną liczbą stąd wniosek na temat gruntów zielonych. Mniejszość nieruchomości nie posiadała piwnic co jest dość typowe dla zabudowy amerykańskiej skąd prawdopodobnie są zebrane dane zważywszy również na nietypowo wysokie ceny oraz metraże. Dość logiczną, aczkolwiek wartą podkreślenia obserwacją był fakt, że brak podłączenia drogi głównej do nieruchomości powodował spadek ceny we wszystkich przypadkach. 
