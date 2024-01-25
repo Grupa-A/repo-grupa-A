@@ -383,8 +383,6 @@ Na podstawie testu normalności Shapiro-Wilka można stwierdzić, że zarówno d
 var(price)
 var(area)
 
-# Krok drugi - w teście F podajemy kolejno zmienną o wyższej, a następnie niższej z dwóch wariancji - jest to test ilorazu wariancji (wyższa przez niższą) - jednostronny, prawostronny.
-
 var.test(price, area, alternative="greater")  
 ```
 Wyniki testu F sugerują, że wariancje między cenami a powierzchnią są istotnie różne, przy czym wariancja cen jest znacząco większa.
