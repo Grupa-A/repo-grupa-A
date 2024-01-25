@@ -1,0 +1,413 @@
+---
+title: "Analiza Danych Agencji Nieruchomości"
+author: "Kinga Derewecka, Piotr Bochiński"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+agencja <- read.csv("agencja_nieruchomosci.csv")
+library(outliers)
+library(DMwR)
+library(magrittr)
+library(ggplot2)
+library(scales)
+library(ggstatsplot)
+library(ggpubr)
+attach(agencja)
+```
+
+## Wprowadzenie
+
+Analiza danych agencji nieruchomości stanowi kluczowe narzędzie w zrozumieniu dynamicznych aspektów rynku nieruchomości. W ramach tego projektu, przeprowadzono szczegółową analizę zestawu danych, który zawiera informacje na temat 13 zmiennych istotnych dla charakteryzacji nieruchomości. Te dane obejmują aspekty, takie jak cena nieruchomości, powierzchnia, liczba sypialni, łazienek, a także różnorodne udogodnienia i cechy domów.
+
+Celem  analizy jest zidentyfikowanie istotnych zależności, które mogą mieć wpływ na ceny nieruchomości. Zbadano zarówno zmienne ilościowe, jak i jakościowe, aby uzyskać pełniejszy obraz rynku nieruchomości. Analiza ta może dostarczyć istotnych wskazówek dla agencji nieruchomości, inwestorów czy potencjalnych nabywców, pomagając im podejmować bardziej świadome decyzje.
+
+## Czyszczenie danych
+
+W pierwszym etapie analizy skoncentrowano się na procesie czyszczenia danych, co obejmuje identyfikację, zarządzanie i eliminację potencjalnych nieprawidłowości w danych.
+
+### Brakujące obserwacje
+
+```{r}
+```
+
+### Obserwacje odstające
+
+Kolejnym krokiem jest zidentyfikowanie obserwacji odstających, ponieważ mogą one wpływać na wynik analizy i prowadzić do błędnych wniosków.
+
+Na wstępie przedstawiono wykresy ramkowe, ilustrujące rozkład zmiennych ilościowych.
+
+```{r}
+par(mfrow = c(2, 3))
+for (col in colnames(agencja)) {
+  if (is.numeric(agencja[[col]])) {
+    boxplot(agencja[[col]], 
+            main = paste("Wykres Ramkowy dla", col), 
+            ylab = col,
+            col = "skyblue",
+            border = "darkblue",
+            pch = 19,
+            cex = 1.5
+    )
+  }
+}
+```
+
+Cena: Kilka nieruchomości ma znacznie wyższą cenę niż pozostałe, co może świadczyć o ich wysokim standardzie, atrakcyjnej lokalizacji lub innych cechach podnoszących wartość.
+Powierzchnia: Niektóre nieruchomości mają bardzo dużą powierzchnię, co może oznaczać, że są to domy jednorodzinne lub posiadają dużą ilość pięter.
+Liczba sypialni: Niektóre nieruchomości mają 5 i 6 sypialni, co jest znacznie więcej niż średnia. Może to być związane z dużą powierzchnią lub specyficznym układem pomieszczeń.
+Liczba łazienek: Jedna nieruchomość ma 4 łazienki. Może to być związane z dużą liczbą sypialni lub wysokim standardem. Liczba pięter: Kilka nieruchomości ma 4 piętra. Może to oznaczać, że są to domy z poddaszem lub piwnicą.
+Liczba miejsc parkingowych: Niektóre nieurchomości mają 3 miejsca parkingowe.Może to oznaczać, że są to domy z garażem
+lub podjazdem.
+
+Następnie zaprezentowano wykresy rozrzutu, ukazujące zależności między dwiema zmiennymi ilościowymi.
+
+```{r}
+par(mar = c(2, 2, 2, 2))
+par(mfrow = c(6, 5))
+for (col1 in colnames(agencja)) {
+  for (col2 in colnames(agencja)) {
+    if (is.numeric(agencja[[col1]]) && is.numeric(agencja[[col2]]) && col1 != col2) {
+      plot(agencja[[col1]], agencja[[col2]], 
+           main = paste("Wykres Rozrzutu dla", col1, "i", col2),
+           xlab = col1, ylab = col2)
+    }
+  }
+}
+
+```
+
+Postawiono warunki pozwalają zidentyfikować, które obserwacje w poszczególnych kolumnach mają wartości odstające w kontekście standardowego odchylenia. Wartości TRUE wskazują na to, że dana obserwacja spełnia warunek, natomiast FALSE oznacza, że nie spełnia warunku.
+
+```{r}
+conditions <- data.frame(
+  price = abs(scale(agencja$price)) > 3,
+  area = abs(scale(agencja$area)) > 3,
+  bedrooms = abs(scale(agencja$bedrooms)) > 3,
+  bathrooms = abs(scale(agencja$bathrooms)) > 3,
+  stories = abs(scale(agencja$stories)) > 3,
+  parking = abs(scale(agencja$parking)) > 3
+)
+summary(conditions)
+```
+
+Cena: 6 z 545 nieruchomości ma cenę, która jest odstająca.
+Powierzchnia: 7 z 545 nieruchomości ma powierzchnię, która jest odstająca.
+Liczba sypialni: 2 z 545 nieruchomości ma liczbę sypialni, która jest odstająca.
+Liczba łazienek: 11 z 545 nieruchomości ma liczbę łazienek, która jest odstająca.
+Liczba pięter: Żadna z 545 nieruchomości nie ma liczby pięter, która jest odstająca. Może to oznaczać, że wszystkie nieruchomości mają podobną liczbę pięter lub że zmienna stories nie ma rozkładu normalnego. 
+Liczba miejsc parkingowych: Żadna z 545 nieruchomości nie ma liczby miejsc parkingowych, która jest odstająca. Może to oznaczać, że wszystkie nieruchomości mają podobną liczbę miejsc parkingowych lub że zmienna parking nie ma rozkładu normalnego.
+
+Zastosowano test Grubbsa dla jednego odstającego elementu dla kilku zmiennych kluczowych.
+
+```{r}
+grubbs.test(agencja$price)
+grubbs.test(agencja$area)
+grubbs.test(agencja$bedrooms)
+grubbs.test(agencja$bathrooms)
+grubbs.test(agencja$stories)
+grubbs.test(agencja$parking)
+```
+
+Test Grubbsa wskazuje na obecność potencjalnych odstępstw w kilku zmiennych. Wartości najwyższe w przypadku price, area, bedrooms, oraz bathrooms różnią się istotnie od reszty danych, co sugeruje, że mogą stanowić potencjalne wartości odstające. Ostatnie dwie zmienne (stories, parking) nie wykazują istotnych różnic w najwyższych wartościach.
+
+### Walidacja danych
+
+Przeprowadzono kilka kroków walidacyjnych, w tym sprawdzenie poprawności typów danych, braku duplikatów, oraz spełnienia określonych warunków dla poszczególnych zmiennych. W szczególności, zweryfikowano, czy wartości kolumn price, area, bedrooms, bathrooms, stories, oraz parking są przechowywane jako liczby, czy liczba sypialni, łazienek, pięter i miejsc parkingowych są liczbami całkowitymi i nieujemnymi, a także czy kolumny mainroad, guestroom, basement, hotwaterheating, airconditioning, Furnishing status, oraz Prefarea zawierają tylko odpowiednie wartości.
+
+```{r}
+#sprawdzenie czy dane mają poprawny typ
+str(agencja)
+summary(agencja)
+#sprawdzenie czy dane nie mają duplikatów
+anyDuplicated(agencja)
+#sprawdzenie czy cena nieruchomości jest przechowywana jako liczba
+all(sapply(agencja$price, function(x) is.numeric(x)))
+#sprawdzenie czy powierzchnia jest przechowywana jako liczba
+all(sapply(agencja$area, function(x) is.numeric(x)))
+# sprawdzenie czy liczba sypialni jest liczbą całkowitą i nieujemną
+all(agencja$bedrooms %% 1 == 0) && all(agencja$bedrooms >= 0)
+#sprawdzenie czy liczba łazienek jest liczbą całkowitą i nieujemną
+all(agencja$bathrooms %% 1 == 0) && all(agencja$bathrooms >= 0)
+#sprwdzenie czy liczba pięter jest liczbą całkowitą i nieujemną?
+all(agencja$stories %% 1 == 0) && all(agencja$stories >= 0)
+#sprwdzenie czy liczba miejsc parkingowych jest liczbą całkowitą i nieujemną
+all(agencja$parking %% 1 == 0) && all(agencja$parking >= 0)
+#sprawdzenie czy wszystkie wartości w kolumnie Mainroad to "Tak" lub "Nie"
+all(agencja$mainroad %in% c("yes", "no"))
+#sprawdzenie czy wszystkie wartości w kolumnie Guestroom to "Tak" lub "Nie"
+all(agencja$guestroom %in% c("yes", "no"))
+#sprawdzenie czy wszystkie wartości w kolumnie Basement to "Tak" lub "Nie"
+all(agencja$basement %in% c("yes", "no"))
+#sprawdzenie czy wszystkie wartości w kolumnie Hot water heating to "Tak" lub "Nie"
+all(agencja$hotwaterheating %in% c("yes", "no"))
+#sprawdzenie czy wszystkie wartości w kolumnie Airconditioning to "Tak" lub "Nie"
+all(agencja$airconditioning %in% c("yes", "no"))
+#sprawdzenie czy Furnishing status zawiera tylko dopuszczalne wartości?
+all(agencja$`Furnishing status` %in% c("w pełni umeblowany", "częściowo umeblowany", "nieumeblowany"))
+#sprawdzenie czy Prefarea zawiera tylko "Tak" lub "Nie"?
+all(agencja$Prefarea %in% c("yes", "no"))
+```
+
+Podczas analizy danych o nieruchomościach stwierdzono, że wszystkie kluczowe warunki walidacyjne zostały spełnione. Cena nieruchomości oraz powierzchniajest przechowywana jako liczba, a liczba sypialni, łazienek, pięter oraz miejsc parkingowych zawiera tylko nieujemne liczby całkowite. Dodatkowo, kolumny Mainroad, Guestroom, Basement, Hot water heating, Airconditioning, Furnishing status i Prefarea zawierają tylko oczekiwane wartości 'Tak' lub 'Nie'. Dane są gotowe do dalszej analizy.
+
+## Wizualizacja danych
+
+W tej części projektu zaprezentowano różne typy wykresów, takie jak histogramy, wykresy punktowe, wykresy liniowe, wykresy bąbelkowe i inne.
+
+### Wykresy zmiennej ilościowej
+
+Wykresy histogramów przedstawiające ceny nieruchomości zostały stworzone z uwzględnieniem liczby sypialni, łazienek, pięter i miejsc parkingowych. Każdy histogram wizualizuje rozkład cen w zależności od danej kategorii, umożliwiając łatwe porównanie dystrybucji cen między różnymi parametrami nieruchomości.
+
+```{r}
+
+ggplot(agencja, aes(x = price , fill = factor(bedrooms))) +
+  geom_histogram(binwidth = 2000000, position = "dodge", color = "black", alpha = 0.7) +
+  labs(title = "Histogram cen nieruchomości z podziałem na liczebność sypialni",
+       x = "Cena",
+       y = "Liczba nieruchomości") +
+  scale_fill_discrete(name = "Liczba sypialni")
+
+ggplot(agencja, aes(x = price , fill = factor(bathrooms))) +
+  geom_histogram(binwidth = 2000000, position = "dodge", color = "black", alpha = 0.7) +
+  labs(title = "Histogram cen nieruchomości z podziałem na liczebność łazienek",
+       x = "Cena",
+       y = "Liczba nieruchomości") +
+  scale_fill_discrete(name = "Liczba łazienek")
+
+ggplot(agencja, aes(x = price , fill = factor(stories))) +
+  geom_histogram(binwidth = 2000000, position = "dodge", color = "black", alpha = 0.7) +
+  labs(title = "Histogram cen nieruchomości z podziałem na liczebność pięter",
+       x = "Cena",
+       y = "Liczba nieruchomości") +
+  scale_fill_discrete(name = "Liczba pięter")
+
+ggplot(agencja, aes(x = price , fill = factor(parking))) +
+  geom_histogram(binwidth = 2000000, position = "dodge", color = "black", alpha = 0.7) +
+  labs(title = "Histogram cen nieruchomości z podziałem na liczebność miejsc parkingowych",
+       x = "Cena",
+       y = "Liczba nieruchomości") +
+  scale_fill_discrete(name = "Liczba miejsc parkingowych")
+
+```
+
+Pierwszy histogram przedstawia rozkład cen nieruchomości w zależności od liczby sypialni. Dominującym trendem są nieruchomości z trzema sypialniami, osiągające średnio cenę około 4 000 000 zł. Nieruchomości z dwiema sypialniami są zazwyczaj tańsze, natomiast te z czterema sypialniami charakteryzują się wyższą ceną. Nieruchomości z jedną, pięcioma lub sześcioma sypialniami są rzadko spotykane na rynku.
+Drugi histogram ilustruje rozkład cen nieruchomości w zależności od liczby łazienek. Najczęstsze są nieruchomości z jedną łazienką, osiągające przeciętnie cenę około 4 000 000 zł. Niższe ceny zazwyczaj korelują z jedną łazienką, podczas gdy wyższe ceny związane są z dwiema łazienkami. Nieruchomości z trzema lub czterema łazienkami są rzadkością.
+Trzeci histogram prezentuje rozkład liczby nieruchomości w zależności od liczby pięter. Nieruchomości jedno- i dwupiętrowe występują z podobną częstością, natomiast te z trzema lub czterema piętrami są rzadkie, a ich ceny zazwyczaj rosną.
+Czwarty histogram ukazuje rozkład cen nieruchomości w zależności od liczby miejsc parkingowych. Nieruchomości bez miejsc parkingowych dominują, podobnie jak te z jednym lub dwoma miejscami parkingowymi. Trzy miejsca parkingowe są rzadkością.
+Wykresy gęstości rozkładu cen nieruchomości zostały stworzone z uwzględnieniem liczby sypialni, łazienek, pięter i miejsc parkingowych. Prezentowane wykresy dostarczają głębokiej analizy zróżnicowania cenowego w kontekście różnych parametrów nieruchomości.
+
+```{r}
+ggplot(agencja, aes(x = price, fill = factor(bedrooms))) +
+  geom_density(alpha = 0.25) +
+  labs(title = 'Gęstość rozkładu cen', x = 'Cena', y = 'Gęstość') +
+  scale_fill_discrete(name = 'Liczba sypialni')
+ggplot(agencja, aes(x = price, fill = factor(bathrooms))) +
+  geom_density(alpha = 0.25) +
+  labs(title = 'Gęstość rozkładu cen', x = 'Cena', y = 'Gęstość') +
+  scale_fill_discrete(name = 'Liczba łazienek')
+ggplot(agencja, aes(x = price, fill = factor(stories))) +
+  geom_density(alpha = 0.25) +
+  labs(title = 'Gęstość rozkładu cen', x = 'Cena', y = 'Gęstość') +
+  scale_fill_discrete(name = 'Liczba pięter')
+ggplot(agencja, aes(x = price, fill = factor(parking))) +
+  geom_density(alpha = 0.25) +
+  labs(title = 'Gęstość rozkładu cen', x = 'Cena', y = 'Gęstość') +
+  scale_fill_discrete(name = 'Liczba miejsc parkingowych')
+```
+Pierwszy wykres przedstawia gęstość rozkładu cen nieruchomości w zależności od liczby sypialni. Wykres pokazuje, że im więcej sypialni ma nieruchomość, tym bardziej zróżnicowane są jej ceny. Nieruchomości z jedną sypialnią mają najwyższą gęstość cenową wokół 8e-07, co oznacza, że większość z nich ma podobną cenę. Nieruchomości z większą liczbą sypialni mają niższe i szersze szczyty gęstości, co oznacza, że ich ceny są bardziej rozproszone.
+Drugi wykres prezentuje gęstość rozkładu cen w zależności od liczby łazienek. Podobnie jak w przypadku sypialni, większa liczba łazienek wiąże się z bardziej zróżnicowanymi cenami. Nieruchomości z jedną łazienką wykazują skupienie cenowe wokół 3e-07, podczas gdy dla tych z większą liczbą łazienek obserwujemy niższe i bardziej rozproszone wartości.
+Trzeci wykres ukazuje gęstość rozkładu cen w zależności od liczby pięter. Interesująco, niezależnie od liczby pięter, rozkład cenowy utrzymuje podobny wzorzec, skoncentrowany wokół 3e-07. To sugeruje, że ilość pięter nie ma istotnego wpływu na zróżnicowanie cen nieruchomości.
+Na czwartym wykresie widać, że gęstość rozkładu cen związanych z liczbą miejsc parkingowych. Nieruchomości bez miejsc parkingowych prezentują największe skupienie cen wokół 3e-07. Dla miejsc parkingowych od 1 do 3, gęstość rozkładu jest bardziej rozproszona, jednak zachowuje pewne podobieństwo.
+
+### Wykresy dwóch zmiennych ilościowych
+
+Wykres punktowy między ceną, a powierzchnią nieruchomości stanowi kluczowy aspekt zrozumienia rynku mieszkaniowego. Dodatkowo, podział na liczbę pokoi wprowadza dodatkową warstwę informacji, pozwalając na lepsze zrozumienie, jak te trzy zmienne współgrają ze sobą.
+
+```{r}
+ggplot(agencja, aes(x = area, y = price, color = factor(bedrooms))) +
+  geom_point() +
+  labs(title = 'Wykres punktowy: Cena vs. Powierzchnia',
+       x = 'Powierzchnia',
+       y = 'Cena') +
+  scale_color_discrete(name = 'Liczba sypialni')
+```
+Wykres pokazuje, że im większa jest powierzchnia, tym wyższa jest cena, ale istnieje duża zmienność, co wskazuje na wpływ innych czynników na cenę. Różne kolory oznaczają nieruchomości z różną liczbą sypialni, jednak nie widać wyraźnego wzorca, który by wskazywał, że liczba sypialni ma znaczący wpływ na cenę.
+
+### Wykresy zmiennej jakościowej
+
+```{r}
+
+```
+
+### Wykresy dwóch zmiennych jakościowych
+
+```{r}
+
+```
+
+### Wykresy zmiennej ilościowej vs zmiennej jakościowej
+
+Wykres zmiennej ilościowej i zmiennej jakościowej przedstawia zależność między ceną domu, a liczbą sypialni.
+
+```{r}
+library(dplyr)
+
+medians <- agencja %>%
+  group_by(bedrooms) %>%
+  dplyr::summarize(median_price = median(price, na.rm = TRUE)) 
+
+ggplot(agencja, aes(x = factor(bedrooms), y = price)) +
+  geom_boxplot(aes(fill = factor(bedrooms)), outlier.alpha = 0.25, position = 'dodge') +
+  geom_text(data = medians, aes(x = factor(bedrooms), y = median_price, label = median_price),
+            color = 'red', hjust = -0.5, vjust = 0.5, size = 3) +
+  stat_summary(aes(ymax = after_stat(y), ymin = after_stat(y)), fun = mean,
+               geom = 'errorbar', width = 0.75, linetype = 'solid',
+               position = 'dodge', color = 'white', size = 1) +
+  theme(legend.position = 'none')
+```
+Z wykresu wynika, że im więcej sypialni ma dom, tym jest droższy. Jednak w kategoriach 2, 3 i 4 sypialni występują wartości odstające, które zwiększają zmienność cen. Największa różnica cenowa jest między domami z 4 i 5 sypialniami, co widać po długich wąsach wykresów pudełkowych. Domy z 6 sypialniami nie pasują do ogólnej tendencji, ponieważ są tańsze niż domy z mniejszą liczbą sypialni.
+
+### Wykresy bąbelkowe
+
+```{r}
+
+```
+
+### Kilka wykresów na jednym panelu
+
+```{r}
+
+```
+
+
+## Analiza opisowa
+
+W trzecim etapie projektu przeprowadzono kompleksową analizę opisową danych agencji nieruchomości, wspartą odpowiednimi grafikami. 
+
+### Data wrangling
+
+Dokonano odpowiedniego dostosowania formatów zmiennych, uwzględniając ich skalę pomiarową oraz przyszłe zastosowanie. Ten proces ma na celu zapewnienie spójności i odpowiedniego reprezentowania danych, co umożliwi bardziej precyzyjną analizę oraz ułatwi przyszłe używanie tych informacji. 
+
+```{r}
+agencja_nieruchomosci$bedrooms<-factor(agencja_nieruchomosci$bedrooms,ordered=TRUE)
+agencja_nieruchomosci$bathrooms<-factor(agencja_nieruchomosci$bathrooms,ordered=TRUE)
+agencja_nieruchomosci$stories<-factor(agencja_nieruchomosci$stories,ordered=TRUE)
+agencja_nieruchomosci$parking<-factor(agencja_nieruchomosci$parking,ordered=TRUE)
+agencja_nieruchomosci$furnishingstatus<-as.factor(agencja_nieruchomosci$furnishingstatus)
+agencja_nieruchomosci$mainroad<-as.factor(agencja_nieruchomosci$mainroad)
+agencja_nieruchomosci$guestroom<-as.factor(agencja_nieruchomosci$guestroom)
+agencja_nieruchomosci$basement<-as.factor(agencja_nieruchomosci$basement)
+agencja_nieruchomosci$hotwaterheating<-as.factor(agencja_nieruchomosci$hotwaterheating)                         
+agencja_nieruchomosci$airconditioning<-as.factor(agencja_nieruchomosci$airconditioning)
+agencja_nieruchomosci$prefarea<-as.factor(agencja_nieruchomosci$prefarea)
+```
+
+### Tabele liczności oraz TAI
+
+Zestawienie prezentuje rozkład cen mieszkań w różnych przedziałach cenowych.
+
+```{r}
+etykiety<-c("1,5-3 mln","3-4,5 mln","4,5-6 mln","6-7,5 mln","7,5-9 mln","9-10,5 mln","10,5-12 mln","12-13,5 mln")
+limits<-cut(agencja_nieruchomosci$price,seq(1500000,13500000,by=1500000),labels=etykiety)
+tabela1<-freq(limits,type="html")
+```
+
+```{r tai, echo=FALSE}
+kbl(tabela1,caption = "Mieszkania  - ceny w mln") %>%
+    kable_material(c("striped", "hover"))
+tab1<-classIntervals(agencja_nieruchomosci$price,n=8,style="fixed",fixedBreaks=seq(1500000,13500000,by=1500000))
+jenks.tests(tab1)
+```
+
+W analizie cen mieszkań można zauważyć, że największą grupę stanowią nieruchomości w przedziale od 3 do 4,5 mln, reprezentujące 40,4% zbioru. Ogólnie, mieszkania o cenach od 1,5 do 6 mln stanowią 78,5% zbioru, co wskazuje na dominację nieruchomości w średnich przedziałach cenowych na rynku. Mimo obecności mieszkań o wyższych cenach, ich udziały są stosunkowo niższe. Analiza kumulacyjna podkreśla, że większość rynku koncentruje się w przedziałach cenowych od 3 do 6 mln. Warto także zauważyć, że nieruchomości w przedziale 10,5-12 mln stanowią zaledwie 0,7% całego zbioru, co świadczy o ich znacznej mniejszej liczbie na rynku.
+
+### Podstawowe wykresy
+
+```{r}
+
+```
+
+### Grupowanie grafik
+
+```{r}
+
+```
+
+### Statystyki opisowe
+
+```{r}
+
+```
+
+### Podsumowanie opisu danych
+
+```{r}
+
+```
+
+### Macierze korelacji
+
+Analiza korelacji stanowi kluczowy element w badaniu związków między różnymi parametrami nieruchomości. W celu lepszego zrozumienia tych wzajemnych relacji, przeprowadzono obliczenia współczynników korelacji oraz utworzono macierz korelacji dla kluczowych parametrów, takich jak cena nieruchomości, powierzchnia, liczba łazienek, sypialni oraz pięter.
+
+```{r}
+library(corrplot)
+
+corrplot(cor(agencja[,1:5,11]), method = "number", type = "upper", diag =FALSE)
+corr_matrix<-cor(agencja[,1:5,11])
+corrplot(corr_matrix, method="color")
+
+```
+Analiza korelacji przedstawiona na wykresie wskazuje na związki między ceną a powierzchnią, liczbą sypialni, łazienek i pięter. Największa korelacja występuje między ceną a powierzchnią (0.54) oraz ceną a liczbą łazienek (0.52), co oznacza, że te zmienne są średnio skorelowane dodatnio. Oznacza to, że wzrost wartości jednej zmiennej jest związany ze wzrostem wartości drugiej zmiennej.
+
+## Wnioskowanie statystyczne
+
+W ramach analizy danych dotyczących cen nieruchomości przeprowadzono szereg testów statystycznych mających na celu zrozumienie zależności między cenami a różnymi zmiennymi, w tym powierzchnią mieszkania. Kluczowe wyniki obejmują testy normalności, testy Wilcoxona oraz ewentualną analizę korelacji.
+
+### Test  i wykresy normalności
+
+H0: normalność rozkładu
+
+```{r}
+ggqqplot(price)
+ggqqplot(area)
+shapiro.test(price)
+shapiro.test(area)
+```
+Na podstawie testu normalności Shapiro-Wilka można stwierdzić, że zarówno dane dotyczące ceny, jak i powierzchni nie spełniają założenia normalności.
+
+### Jednorodność wariancji
+
+```{r}
+var(price)
+var(area)
+
+var.test(price, area, alternative="greater")  
+```
+Wyniki testu F sugerują, że wariancje między cenami a powierzchnią są istotnie różne, przy czym wariancja cen jest znacząco większa.
+
+### Test Wilcoxona
+
+H0: Nie istnieje istotna statystycznie różnica między cenami a powierzchnią mieszkań.
+H1: Istnieje istotna statystycznie różnica między cenami a powierzchnią mieszkań.
+
+```{r}
+wilcox.test(price, area, alternative = "two.sided", paired = FALSE, exact = FALSE, correct = TRUE, conf.int = FALSE, conf.level = 0.95)
+
+```
+Hipoteza zerowa zostaje odrzucona na rzecz hipotezy alternatywnej. Istnieją statystycznie istotne różnice w cenach mieszkań w zależności od powierzchni, przy użyciu testu Wilcoxona.
+
+### Wizualizacja
+
+```{r}
+ggscatterstats(
+  data = agencja,
+  x = area,
+  y = price,
+  type = "np",
+)
+```
+
+## Podsumowanie i wnioski końcowe
+
