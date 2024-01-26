@@ -1,11 +1,3 @@
----
-title: "mnb"
-output: html_document
-date: "2024-01-14"
----
-
-
-
 title: "Analiza Danych Agencji Nieruchomości"
 author: "Kinga Derewecka, Piotr Bochiński"
 date: "`r Sys.Date()`"
